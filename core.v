@@ -2,15 +2,28 @@
 Require Import Coq.Vectors.Vector.
         Import VectorNotations.
 Require Import Coq.Sorting.Permutation.
+Require Import Coq.Arith.Le.
+Require Import Coq.Arith.Lt.
+Require Import Coq.Arith.Gt.
+Require Import Coq.Program.Equality.
+
+Fixpoint uniques  {n : nat} {A : Type} (deck : t A n) : Prop :=
+      match deck with
+        | nil _            => True
+        | cons _ c0 _ rest => (Forall (fun c : A => c <> c0) rest ) /\ uniques rest
+      end.
 
 Module Type PokerFunctions.
 
   (* Of Cards and Decks *)
   Parameter  Card              : Type.
   Parameter  standard_deck     : t Card 52.
+  Axiom unique_deck : uniques standard_deck.
+
   Parameter  shuffle           : forall n : nat, t Card n -> t Card n.
+
   Axiom      shuffle_changes   : forall n : nat, forall deck : t Card n,
-                                        n > 1 -> shuffle n deck <> deck.
+                                        n > 1 -> uniques deck -> shuffle n deck <> deck.
   Axiom      Shuffle_perumute  : forall n : nat, forall deck : t Card n,
                                  Permutation (to_list deck) (to_list (shuffle n deck)).
   Parameter  count_cards : Card -> nat.
@@ -23,7 +36,7 @@ Module Type PokerFunctions.
 
   (* Of Players *)
   Definition Player           : Type := (nat * hand).
-  Definition get_hand : Player -> hand    := snd .
+  Definition get_hand  : Player -> hand    := snd .
   Definition get_money : Player -> nat := fst.
   Parameter  number_of_players : nat.
   Definition max_players       := 6.
@@ -115,19 +128,63 @@ Definition standard_deck : t Card 52 :=
     map Diamond Names
 .
 
-Fixpoint isEven (n:nat) := 
-match n with
-| 0        => True
-| S 0      => False
-| S (S n') => isEven n'
-end.
+Definition unique_deck : uniques standard_deck.
+Proof.
 
-Definition split {n n' m' : nat} {A : Type} {p : (n' +  m') = n} 
-                  (deck : t A n) : (t A n' , t A m') :=
+constructor.
+all:constructor.
+all:simpl.
+
+all:repeat (
+(try discriminate) ;
+(constructor)
+).
+Qed.
 
 
-Definition shuffle {n:nat} (deck : t Card n) := 
-  match split deck with
-  | (d1,d2) => merge (reverse d2) d1
-  end.
+Definition shuffle {n : nat} (deck : t Card n) : t Card n := rev (A:=Card) (n:=n) deck.
+Definition shuffle_changes : forall n : nat, forall deck : t Card n,
+                                        n > 1 -> (uniques deck) -> (shuffle (n:=n) deck) <> deck.
+Proof.
+intros.
+inversion H.
+Check deck.
+subst.
+dependent induction deck.
+dependent induction deck.
+dependent induction deck.
+simpl.
+cut (h <> h0).
+all:(try 
+(dependent induction deck ||
+dependent induction deck  ||
+dependent induction deck  
+)).
+intros.
+Check shuffle.
+Compute (shuffle (n:=2) [h; h0]).
+
+unfold shuffle.
+unfold rev.
+unfold rev_append.
+unfold rev_append_tail.
+unfold eq_rect_r.
+unfold eq_rect.
+unfold eq_sym.
+simpl.
+pattern shuffle.
+
+Check .
+dependent induction n.
+
+
+inversion deck.
+case deck.
+assert (n <> 0).
+intuition.
+
+absurd H1 H.
+
+
+
 End impl.
